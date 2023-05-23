@@ -5,12 +5,22 @@ import dns.message
 import signal
 import threading
 import yaml
+import argparse
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description="A custom DNS server.")
+parser.add_argument("-d", "--debug", action="store_true", help="Enable full debugging (logs all DNS messages).")
+args = parser.parse_args()
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
 
 class DNSHandler(socketserver.BaseRequestHandler):
+    """
+    This class handles the DNS requests from the client.
+    """
     # Load specific domains from the config file
     with open('config.yaml') as file:
         config = yaml.full_load(file)
@@ -21,18 +31,28 @@ class DNSHandler(socketserver.BaseRequestHandler):
                                  'flip_next': True}
                             for entry in config['specific_domains']}
 
-    @staticmethod
-    def log_dns_message(message, message_type, static_response=False):
+    def log_dns_message(self, message, message_type, static_response=False):
+        """
+        This method logs the given DNS message.
+        :param message:
+        :param message_type:
+        :param static_response:
+        :return:
+        """
         # Parse the DNS message
         dns_msg = dns.message.from_wire(message)
 
-        if message_type == 'request':
-            # If this is a request, log the domain(s) being requested
-            logging.info(f"Client request for domain(s): {', '.join(str(q.name) for q in dns_msg.question)}")
-        elif message_type == 'response':
-            # If this is a response, log the A records (IPv4 addresses) returned
-            source = "static" if static_response else "Google DNS"
-            logging.info(f"Response from {source}: {', '.join(answer.to_text() for answer in dns_msg.answer)}")
+        # Only log the message if full debugging is enabled or if the domain is in the config.yaml file
+        for question in dns_msg.question:
+            domain = str(question.name)
+            if args.debug or domain in self.specific_domains:
+                if message_type == 'request':
+                    # If this is a request, log the domain(s) being requested
+                    logging.info(f"Client request for domain(s): {', '.join(str(q.name) for q in dns_msg.question)}")
+                elif message_type == 'response':
+                    # If this is a response, log the A records (IPv4 addresses) returned
+                    source = "static" if static_response else "Google DNS"
+                    logging.info(f"Response from {source}: {', '.join(answer.to_text() for answer in dns_msg.answer)}")
 
     @staticmethod
     def get_google_dns_response(request_data):
@@ -51,10 +71,19 @@ class DNSHandler(socketserver.BaseRequestHandler):
         return response
 
     def handle(self):
+        """
+        This method handles the DNS request from the client.
+        :return:
+        """
         data = self.request[0].strip()
         socket_in = self.request[1]
 
-        dns_msg = dns.message.from_wire(data)
+        try:
+            dns_msg = dns.message.from_wire(data)
+        except dns.name.BadLabelType:
+            if args.debug_mode:
+                logging.error("Bad DNS label type encountered in message from client.")
+            return
 
         # Check if the requested domain matches any of the specific domains
         for question in dns_msg.question:

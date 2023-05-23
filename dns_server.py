@@ -31,6 +31,22 @@ class DNSHandler(socketserver.BaseRequestHandler):
             for answer in dns_msg.answer:
                 logging.info(f"Response: {answer.to_text()}")
 
+    @staticmethod
+    def query_google_dns(request_data):
+        """
+        This method queries the Google DNS with the given request data.
+        It sends the request to Google's DNS server and returns the response.
+
+        :param request_data: The request data in wire format to send to Google's DNS
+        :return: The response from Google's DNS server
+        """
+        dns_query = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        dns_query.sendto(request_data, ("8.8.8.8", 53))
+
+        # Receive and return response from Google's DNS server
+        response, _ = dns_query.recvfrom(1024)
+        return response
+
     def handle(self):
         # Receive data from client
         data = self.request[0].strip()
@@ -58,12 +74,8 @@ class DNSHandler(socketserver.BaseRequestHandler):
             # Send the response
             socket_in.sendto(response.to_wire(), self.client_address)
         else:
-            # Forward the request to Google's DNS server
-            dns_query = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            dns_query.sendto(data, ("8.8.8.8", 53))
-
-            # Receive response from Google's DNS server
-            response, _ = dns_query.recvfrom(1024)
+            # Query Google's DNS server
+            response = self.query_google_dns(data)
 
             # Log the response message
             self.log_dns_message(response, 'response')
@@ -84,7 +96,7 @@ def signal_handler(sig, frame):
 
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 53
+    HOST, PORT = "0.0.0.0", 53
     server = socketserver.UDPServer((HOST, PORT), DNSHandler)
     server_thread = threading.Thread(target=server.serve_forever)
     signal.signal(signal.SIGINT, signal_handler)

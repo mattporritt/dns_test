@@ -18,7 +18,7 @@ class DNSHandler(socketserver.BaseRequestHandler):
                                 {'ip': entry['ip'],
                                  'behavior': entry['behavior'],
                                  'used': False,
-                                 'flip_next': False}
+                                 'flip_next': True}
                             for entry in config['specific_domains']}
 
     @staticmethod
@@ -61,7 +61,7 @@ class DNSHandler(socketserver.BaseRequestHandler):
             domain = str(question.name)
             if domain in self.specific_domains:
                 domain_info = self.specific_domains[domain]
-                if domain_info['behavior'] == 'static' or (domain_info['behavior'] == 'once' and not domain_info['used']) or (
+                if domain_info['behavior'] == 'static' or (domain_info['behavior'] == 'once' and domain_info['used']) or (
                         domain_info['behavior'] == 'flip' and not domain_info['flip_next']):
                     # Create a DNS response
                     response = dns.message.make_response(dns_msg)
@@ -94,6 +94,8 @@ class DNSHandler(socketserver.BaseRequestHandler):
             domain = str(question.name)
             if domain in self.specific_domains and self.specific_domains[domain]['behavior'] == 'flip':
                 self.specific_domains[domain]['flip_next'] = not self.specific_domains[domain]['flip_next']
+            if domain in self.specific_domains and self.specific_domains[domain]['behavior'] == 'once':
+                self.specific_domains[domain]['used'] = not self.specific_domains[domain]['used']
 
         # Send the response
         socket_in.sendto(response, self.client_address)

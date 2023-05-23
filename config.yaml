@@ -1,10 +1,17 @@
+# This YAML configuration file defines specific domains and their DNS behaviors.
+
 specific_domains:
-  - domain: 'example.com'
-    ip: '1.2.3.4'
-    behavior: 'static'
-  - domain: 'moodle.com'
-    ip: '5.6.7.8'
-    behavior: 'once'
-  - domain: 'google.com'
-    ip: '9.10.11.12'
-    behavior: 'flip'
+# For 'static' behavior, the DNS server always returns the static IP defined here
+- domain: 'example.com'
+  ip: '1.2.3.4'
+  behavior: 'static'  # Always returns 1.2.3.4 for example.com
+
+# For 'once' behavior, the DNS server first returns Google's DNS response, then always the static IP for subsequent requests
+- domain: 'moodle.com'
+  ip: '5.6.7.8'
+  behavior: 'once'  # Returns Google's DNS response first time, then 5.6.7.8 afterwards
+
+# For 'flip' behavior, the DNS server alternates between Google's DNS response and the static IP for each request
+- domain: 'google.com'
+  ip: '9.10.11.12'
+  behavior: 'flip'  # Alternates between Google's DNS response and 9.10.11.12 for each request

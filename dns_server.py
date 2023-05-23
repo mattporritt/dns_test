@@ -12,6 +12,13 @@ logging.basicConfig(level=logging.INFO)
 
 class DNSHandler(socketserver.BaseRequestHandler):
 
+    # Define a dictionary with your specific domains and their corresponding IPs
+    specific_domains = {
+        'my.domain.com.': '1.2.3.4',
+        'my.second-domain.com.': '2.3.4.5',
+        # Add more domains here
+    }
+
     @staticmethod
     def log_dns_message(message, message_type):
         """
@@ -58,30 +65,28 @@ class DNSHandler(socketserver.BaseRequestHandler):
         # Parse the request
         dns_msg = dns.message.from_wire(data)
 
-        # Define your specific domain and IP
-        specific_domain = 'my.domain.com.'
-        specific_ip = '1.2.3.4'
+        # Check if the requested domain matches any of the specific domains
+        for question in dns_msg.question:
+            if str(question.name) in self.specific_domains:
+                # Create a DNS response
+                response = dns.message.make_response(dns_msg)
 
-        # Check if the requested domain matches the specific domain
-        if any(str(q.name) == specific_domain for q in dns_msg.question):
-            # Create a DNS response
-            response = dns.message.make_response(dns_msg)
+                # Add the answer to the response
+                rrset = dns.rrset.from_text(str(question.name), 0, dns.rdataclass.IN, dns.rdatatype.A, self.specific_domains[str(question.name)])
+                response.answer.append(rrset)
 
-            # Add the answer to the response
-            rrset = dns.rrset.from_text(specific_domain, 0, dns.rdataclass.IN, dns.rdatatype.A, specific_ip)
-            response.answer.append(rrset)
+                # Send the response
+                socket_in.sendto(response.to_wire(), self.client_address)
+                return
 
-            # Send the response
-            socket_in.sendto(response.to_wire(), self.client_address)
-        else:
-            # Query Google's DNS server
-            response = self.query_google_dns(data)
+        # Query Google's DNS server
+        response = self.query_google_dns(data)
 
-            # Log the response message
-            self.log_dns_message(response, 'response')
+        # Log the response message
+        self.log_dns_message(response, 'response')
 
-            # Respond back to the client
-            socket_in.sendto(response, self.client_address)
+        # Respond back to the client
+        socket_in.sendto(response, self.client_address)
 
 
 def signal_handler(sig, frame):

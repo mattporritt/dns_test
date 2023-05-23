@@ -20,13 +20,7 @@ class DNSHandler(socketserver.BaseRequestHandler):
     }
 
     @staticmethod
-    def log_dns_message(message, message_type):
-        """
-        Parses a DNS message and logs info about it.
-
-        :param message: The DNS message in wire format
-        :param message_type: The type of the message, either 'request' or 'response'
-        """
+    def log_dns_message(message, message_type, static_response=False):
         # Parse the DNS message
         dns_msg = dns.message.from_wire(message)
 
@@ -35,8 +29,8 @@ class DNSHandler(socketserver.BaseRequestHandler):
             logging.info(f"Client request for domain(s): {', '.join(str(q.name) for q in dns_msg.question)}")
         elif message_type == 'response':
             # If this is a response, log the A records (IPv4 addresses) returned
-            for answer in dns_msg.answer:
-                logging.info(f"Response: {answer.to_text()}")
+            source = "static" if static_response else "Google DNS"
+            logging.info(f"Response from {source}: {', '.join(answer.to_text() for answer in dns_msg.answer)}")
 
     @staticmethod
     def query_google_dns(request_data):
@@ -75,6 +69,9 @@ class DNSHandler(socketserver.BaseRequestHandler):
                 rrset = dns.rrset.from_text(str(question.name), 0, dns.rdataclass.IN, dns.rdatatype.A, self.specific_domains[str(question.name)])
                 response.answer.append(rrset)
 
+                # Log the response
+                self.log_dns_message(response.to_wire(), 'response', static_response=True)
+
                 # Send the response
                 socket_in.sendto(response.to_wire(), self.client_address)
                 return
@@ -87,7 +84,7 @@ class DNSHandler(socketserver.BaseRequestHandler):
 
         # Respond back to the client
         socket_in.sendto(response, self.client_address)
-
+        
 
 def signal_handler(sig, frame):
     """

@@ -1,5 +1,10 @@
 specific_domains:
-  - domain: 'my.domain.com.'
+  - domain: 'example.com'
     ip: '1.2.3.4'
-  - domain: 'my.second-domain.com.'
-    ip: '2.3.4.5'
+    behavior: 'static'
+  - domain: 'moodle.com'
+    ip: '5.6.7.8'
+    behavior: 'once'
+  - domain: 'google.com'
+    ip: '9.10.11.12'
+    behavior: 'flip'

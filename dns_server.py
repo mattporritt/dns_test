@@ -3,7 +3,6 @@ import socketserver
 import logging
 import dns.message
 import signal
-import sys
 import threading
 import yaml
 
@@ -15,7 +14,12 @@ class DNSHandler(socketserver.BaseRequestHandler):
     # Load specific domains from the config file
     with open('config.yaml') as file:
         config = yaml.full_load(file)
-        specific_domains = {entry['domain']: entry['ip'] for entry in config['specific_domains']}
+        specific_domains = {f"{entry['domain']}." if not entry['domain'].endswith('.') else entry['domain']:
+                                {'ip': entry['ip'],
+                                 'behavior': entry['behavior'],
+                                 'used': False,
+                                 'flip_next': False}
+                            for entry in config['specific_domains']}
 
     @staticmethod
     def log_dns_message(message, message_type, static_response=False):
@@ -31,7 +35,7 @@ class DNSHandler(socketserver.BaseRequestHandler):
             logging.info(f"Response from {source}: {', '.join(answer.to_text() for answer in dns_msg.answer)}")
 
     @staticmethod
-    def query_google_dns(request_data):
+    def get_google_dns_response(request_data):
         """
         This method queries the Google DNS with the given request data.
         It sends the request to Google's DNS server and returns the response.
@@ -47,42 +51,53 @@ class DNSHandler(socketserver.BaseRequestHandler):
         return response
 
     def handle(self):
-        # Receive data from client
         data = self.request[0].strip()
         socket_in = self.request[1]
 
-        # Log the request message
-        self.log_dns_message(data, 'request')
-
-        # Parse the request
         dns_msg = dns.message.from_wire(data)
 
         # Check if the requested domain matches any of the specific domains
         for question in dns_msg.question:
-            if str(question.name) in self.specific_domains:
-                # Create a DNS response
-                response = dns.message.make_response(dns_msg)
+            domain = str(question.name)
+            if domain in self.specific_domains:
+                domain_info = self.specific_domains[domain]
+                if domain_info['behavior'] == 'static' or (domain_info['behavior'] == 'once' and not domain_info['used']) or (
+                        domain_info['behavior'] == 'flip' and not domain_info['flip_next']):
+                    # Create a DNS response
+                    response = dns.message.make_response(dns_msg)
 
-                # Add the answer to the response
-                rrset = dns.rrset.from_text(str(question.name), 0, dns.rdataclass.IN, dns.rdatatype.A, self.specific_domains[str(question.name)])
-                response.answer.append(rrset)
+                    # Add the answer to the response
+                    rrset = dns.rrset.from_text(domain, 0, dns.rdataclass.IN, dns.rdatatype.A, domain_info['ip'])
+                    response.answer.append(rrset)
 
-                # Log the response
-                self.log_dns_message(response.to_wire(), 'response', static_response=True)
+                    # Log the response
+                    self.log_dns_message(response.to_wire(), 'response', static_response=True)
 
-                # Send the response
-                socket_in.sendto(response.to_wire(), self.client_address)
-                return
+                    # Send the response
+                    socket_in.sendto(response.to_wire(), self.client_address)
+
+                    if domain_info['behavior'] == 'once':
+                        self.specific_domains[domain]['used'] = True
+                    if domain_info['behavior'] == 'flip':
+                        self.specific_domains[domain]['flip_next'] = not domain_info['flip_next']
+
+                    return
 
         # Query Google's DNS server
-        response = self.query_google_dns(data)
+        response = self.get_google_dns_response(data)
 
-        # Log the response message
-        self.log_dns_message(response, 'response')
+        # Log the response
+        self.log_dns_message(response, 'response', static_response=False)
 
-        # Respond back to the client
+        # Flip the flag for flip behavior even when we used Google
+        for question in dns_msg.question:
+            domain = str(question.name)
+            if domain in self.specific_domains and self.specific_domains[domain]['behavior'] == 'flip':
+                self.specific_domains[domain]['flip_next'] = not self.specific_domains[domain]['flip_next']
+
+        # Send the response
         socket_in.sendto(response, self.client_address)
-        
+
 
 def signal_handler(sig, frame):
     """

@@ -2,19 +2,12 @@
 
 This project provides a simple DNS server written in Python. The server can be used for testing and development purposes. It forwards DNS requests to Google's DNS servers, receives the responses, and sends them back to the client.
 
-## Dependencies ##
+## Dependency Installation ##
 
-This server relies on the following Python libraries:
-
-- `socket`
-- `socketserver`
-- `logging`
-- `dnspython`
-
-You can install the `dnspython` library with pip:
+This server relies on some extra Python libraries, these can be installed via:
 
 ```commandline
-pip3 install dnspython
+pip install -r requirements.txt
 ```
 
 ## Usage ##

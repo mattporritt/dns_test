@@ -5,19 +5,17 @@ import dns.message
 import signal
 import sys
 import threading
+import yaml
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
 
 class DNSHandler(socketserver.BaseRequestHandler):
-
-    # Define a dictionary with your specific domains and their corresponding IPs
-    specific_domains = {
-        'my.domain.com.': '1.2.3.4',
-        'my.second-domain.com.': '2.3.4.5',
-        # Add more domains here
-    }
+    # Load specific domains from the config file
+    with open('config.yaml') as file:
+        config = yaml.full_load(file)
+        specific_domains = {entry['domain']: entry['ip'] for entry in config['specific_domains']}
 
     @staticmethod
     def log_dns_message(message, message_type, static_response=False):

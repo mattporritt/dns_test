@@ -1,0 +1,5 @@
+specific_domains:
+  - domain: 'my.domain.com.'
+    ip: '1.2.3.4'
+  - domain: 'my.second-domain.com.'
+    ip: '2.3.4.5'

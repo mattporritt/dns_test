@@ -81,7 +81,7 @@ class DNSHandler(socketserver.BaseRequestHandler):
         try:
             dns_msg = dns.message.from_wire(data)
         except dns.name.BadLabelType:
-            if args.debug_mode:
+            if args.debug:
                 logging.error("Bad DNS label type encountered in message from client.")
             return
 

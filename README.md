@@ -1,6 +1,6 @@
 # Python Test DNS Server
 
-This project provides a simple DNS server written in Python. The server can be used for testing and development purposes. It forwards DNS requests to Google's DNS servers, receives the responses, and sends them back to the client.
+This project provides a simple DNS server written in Python. The server can be used for testing and development purposes. It forwards DNS requests to Google's DNS servers, receives the responses, and sends them back to the client. It also allows you to define specific domains and dictate how they should respond to DNS requests.
 
 ## Setup and Usage ##
 
@@ -34,7 +34,7 @@ It is a tool for testing DNS behaviors. This server allows you to define specifi
 
 The behaviors currently supported are `static`, `once`, and `flip`. 
 
-## Behaviors
+### Behaviors  ###
 
 **Static**
 
@@ -72,6 +72,38 @@ Example:
   ip: '9.10.11.12'
   behavior: 'flip'  # Alternates between Google's DNS response and 9.10.11.12 for each request
 ```
+
+### Debugging ###
+By default the server will only output logging for domains that are defined in `config.yaml`. To enable debug logging for all domains, set the `debug` when starting the server.
+
+```commandline
+sudo python3 dns_server.py -d
+```
+
+## Using the DNS Server ##
+To use the DNS server, you need to configure your computer to use it. Configuration depends on your operating system and context.
+
+### DNS For Docker ###
+If you are using Docker, you can pass it the DNS server's IP address as a command line argument. For example:
+
+```commandline
+docker run --dns 192.168.120.100
+```
+
+If you are using a Docker Compose file, you can specify the DNS server's IP address in the `dns` field. For example:
+
+```yaml
+    dns:
+      - 192.168.120.100
+```
+
+### On Mac ###
+If you are running Mac OS, you can set the DNS for the system on the command line by running the following command:
+
+```commandline
+sudo networksetup -setdnsservers Wi-Fi
+```
+
 
 ## AI Acknowledgement ##
 Parts of this plugin were developed using ChatGPT and Github Copilot.

@@ -9,8 +9,8 @@ specific_domains:
   ip: '1.2.3.4'
   behavior: 'static'  # Always returns 1.2.3.4 for example.com
 
-- domain: 'moodle.com'
-  ip: '5.6.7.8'
+- domain: 'nginx.org'
+  ip: '127.0.0.1'
   behavior: 'once'  # Returns Google's DNS response first time, then 5.6.7.8 afterwards
 
 - domain: 'google.com'

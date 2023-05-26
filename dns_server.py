@@ -7,6 +7,8 @@ import threading
 import yaml
 import argparse
 from http_server import start_http_server
+import sys
+from functools import partial
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="A custom DNS server.")
@@ -132,34 +134,40 @@ class DNSHandler(socketserver.BaseRequestHandler):
         socket_in.sendto(response, self.client_address)
 
 
-def signal_handler(sig, frame):
+def signal_handler(dns_server, http_server, sig, frame):
     """
     Handles the SIGINT signal (Ctrl+C) by shutting down the server.
     :param sig:
     :param frame:
     :return:
     """
-    print('Keyboard exit signal received! Shutting down the server.')
-    server.shutdown()  # Shutdown the server
+    print('Keyboard exit signal received! Shutting down the servers.')
+    dns_server.shutdown()  # Shutdown the dns_server
+    dns_server.server_close()  # Close the socket.
+    if http_server:
+        http_server.shutdown()  # Shutdown the http_server
+        http_server.server_close()  # Close the socket.
 
 
 if __name__ == "__main__":
     HOST, PORT = "0.0.0.0", 53
-    server = socketserver.UDPServer((HOST, PORT), DNSHandler)
-    server_thread = threading.Thread(target=server.serve_forever)
-    signal.signal(signal.SIGINT, signal_handler)
+    dns_server = socketserver.UDPServer((HOST, PORT), DNSHandler)
 
     print("DNS Server is starting...")
-    server_thread.start()
+    dns_server_thread = threading.Thread(target=lambda: dns_server.serve_forever(poll_interval=0.1))
+    dns_server_thread.start()
     print("DNS Server is running...")
+
+    http_server = None  # Create http_server variable here
 
     # If the --http argument was passed, start the HTTP server
     if args.http:
         print("HTTP Server is starting...")
-        start_http_server()
-        print("HTTP Server is starting...")
+        http_server = start_http_server()  # Store the http_server object here
+        print("HTTP Server is running...")
+        http_server_thread = threading.Thread(target=lambda: http_server.serve_forever(poll_interval=0.1))
+        http_server_thread.start()
 
-    # Wait for the server thread to finish
-    server_thread.join()
+    # Here is where you put the signal handler registration
+    signal.signal(signal.SIGINT, partial(signal_handler, dns_server, http_server))
 
-    print("DNS Server has stopped.")

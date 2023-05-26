@@ -6,10 +6,12 @@ import signal
 import threading
 import yaml
 import argparse
+from http_server import start_http_server
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="A custom DNS server.")
 parser.add_argument("-d", "--debug", action="store_true", help="Enable full debugging (logs all DNS messages).")
+parser.add_argument('--http', action='store_true', help='Start the HTTP server')
 args = parser.parse_args()
 
 
@@ -150,6 +152,12 @@ if __name__ == "__main__":
     print("DNS Server is starting...")
     server_thread.start()
     print("DNS Server is running...")
+
+    # If the --http argument was passed, start the HTTP server
+    if args.http:
+        print("HTTP Server is starting...")
+        start_http_server()
+        print("HTTP Server is starting...")
 
     # Wait for the server thread to finish
     server_thread.join()

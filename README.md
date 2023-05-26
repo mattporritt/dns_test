@@ -32,7 +32,7 @@ The server logs DNS request and response messages. For each DNS request, it logs
 
 It is a tool for testing DNS behaviors. This server allows you to define specific domains and dictate how they should respond to DNS requests. 
 
-The behaviors currently supported are `static`, `once`, and `flip`. 
+The behaviors currently supported are `static`, `once`, and `flip`.
 
 ### Behaviors  ###
 
@@ -87,22 +87,81 @@ To use the DNS server, you need to configure your computer to use it. Configurat
 If you are using Docker, you can pass it the DNS server's IP address as a command line argument. For example:
 
 ```commandline
-docker run --dns 192.168.120.100
+docker run --dns 192.168.120.100 
 ```
+Where the IP is the address of the DNS server. (Likely the IP of your host machine).
 
 If you are using a Docker Compose file, you can specify the DNS server's IP address in the `dns` field. For example:
 
 ```yaml
     dns:
-      - 192.168.120.100
+      - 192.168.120.100 # IP address of the DNS server. (Likely the IP of your host machine).
 ```
 
-### On Mac ###
+Using either of these methods will cause Docker to use the DNS server for all DNS requests for the container.
+
+### Changing Mac Host DNS ###
 If you are running Mac OS, you can set the DNS for the system on the command line by running the following command:
 
 ```commandline
-sudo networksetup -setdnsservers Wi-Fi
+sudo networksetup -setdnsservers Wi-Fi 127.0.0.1
+# or
+sudo networksetup -setdnsservers Ethernet 127.0.0.1
 ```
+You can find the name of your network service by opening a Terminal window and typing:
+
+```commandline
+networksetup -listallnetworkservices
+```
+
+### Changing Ubuntu Host DNS ###
+On Ubuntu, you can change your DNS settings via the command line by editing the /etc/resolv.conf file or by using the nmcli command if you're using NetworkManager. Here's how to do it:
+
+**Method 1: Editing /etc/resolv.conf**
+
+1. Open a Terminal window.
+2. Open the /etc/resolv.conf file in a text editor with root privileges. For example, you can use nano:
+
+```commandline
+sudo nano /etc/resolv.conf
+```
+
+3. In the file, you'll see lines that look like this:
+
+```commandline
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+```
+
+These are your current DNS servers. You can replace these with the DNS servers you want to use.
+
+4. Save the file and exit the text editor. If you're using nano, you can do this by pressing Ctrl+X, then Y to confirm that you want to save the changes, and then Enter to confirm the file name.
+5. Test the new DNS settings. You can do this by pinging a domain name like google.com and checking that you get a response.
+
+**Method 2: Using nmcli with NetworkManager**
+
+1. Open a Terminal window.
+2. Find the name of your network connection:
+
+```commandline
+nmcli con show
+```
+
+3. Set the DNS for that connection:
+
+```commandline
+sudo nmcli con mod <connection> ipv4.dns "8.8.8.8 8.8.4.4"
+```
+
+Replace <connection> with the name of your network connection, and replace 8.8.8.8 8.8.4.4 with the DNS servers you want to use.
+
+4. To make the changes take effect, you need to restart the network connection:
+
+```commandline
+sudo nmcli con down <connection> && sudo nmcli con up <connection>
+```
+
+Replace <connection> with the name of your network connection.
 
 
 ## AI Acknowledgement ##
